@@ -16,11 +16,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/obsidiandynamics/libstdgo/arity"
 	"github.com/obsidiandynamics/libstdgo/concurrent"
 	"github.com/obsidiandynamics/libstdgo/scribe"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
-	_ "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka/librdkafka"
 )
 
 // Neli is a curator for leader election.
