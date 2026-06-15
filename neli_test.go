@@ -296,6 +296,26 @@ func TestBasicLeaderElectionAndRevocation(t *testing.T) {
 	assertNoError(t, p.Await)
 }
 
+func TestGroupJoinDetection_assigned(t *testing.T) {
+	_, cons, _, config, _ := fixtures{}.create()
+
+	n, err := New(config)
+	require.Nil(t, err)
+
+	p, err := n.Background(func() {})
+	require.Nil(t, err)
+
+	assert.False(t, n.IsGroupJoined())
+
+	cons.rebalanceEvents <- assignedPartitions()
+	wait(t).UntilAsserted(isTrue(n.IsGroupJoined))
+	assert.False(t, n.IsLeader())
+
+	assertNoError(t, n.Close)
+	n.Await()
+	assertNoError(t, p.Await)
+}
+
 func TestLeaderElectionAndRevocation_nopBarrier(t *testing.T) {
 	m, cons, _, config, _ := fixtures{}.create()
 
