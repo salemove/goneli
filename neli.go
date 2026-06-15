@@ -25,6 +25,7 @@ import (
 // Neli is a curator for leader election.
 type Neli interface {
 	IsLeader() bool
+	IsGroupJoined() bool
 	Pulse(timeout time.Duration) (bool, error)
 	PulseCtx(ctx context.Context) (bool, error)
 	Deadline() concurrent.Deadline
@@ -43,6 +44,7 @@ type neli struct {
 	lastReceived        concurrent.AtomicCounter
 	isAssigned          concurrent.AtomicCounter
 	isLeader            concurrent.AtomicCounter
+	isGroupJoined       concurrent.AtomicCounter
 	barrier             Barrier
 	state               concurrent.AtomicReference
 	stateMutex          sync.Mutex
@@ -81,6 +83,7 @@ func New(config Config, barrier ...Barrier) (Neli, error) {
 		lastReceived:        concurrent.NewAtomicCounter(),
 		isAssigned:          concurrent.NewAtomicCounter(),
 		isLeader:            concurrent.NewAtomicCounter(),
+		isGroupJoined:       concurrent.NewAtomicCounter(),
 		barrier:             barrierArg,
 		pollDeadline:        concurrent.NewDeadline(*config.MinPollInterval),
 		state:               concurrent.NewAtomicReference(Live),
@@ -190,6 +193,21 @@ func (n *neli) scene() scribe.Scene {
 // IsLeader returns true if this Neli instance is currently the elected leader.
 func (n *neli) IsLeader() bool {
 	return n.isLeader.GetInt() == 1
+}
+
+// IsGroupJoined returns true once this Neli instance has completed its initial
+// join of the leader election group — i.e. the first partition assignment  has
+// been received from the group coordinator. Until then, the instance is not a
+// functioning member of the group and cannot take part in leader election.
+// This can be used as a readiness signal.
+func (n *neli) IsGroupJoined() bool {
+	return n.isGroupJoined.GetInt() == 1
+}
+
+func (n *neli) markGroupJoined() {
+	if n.isGroupJoined.CompareAndSwap(0, 1) {
+		n.logger().I()("Completed initial join of leader election group")
+	}
 }
 
 func (n *neli) isPartitionZeroAssigned() bool {
@@ -333,6 +351,7 @@ func (n *neli) Deadline() concurrent.Deadline {
 
 func onAssigned(n *neli, assigned kafka.AssignedPartitions) {
 	n.logger().T()("Assigned partitions: %s", assigned)
+	n.markGroupJoined()
 	if containsPartition(assigned.Partitions, 0) {
 		n.logger().I()("Acquired leader status")
 		n.isAssigned.Set(1)

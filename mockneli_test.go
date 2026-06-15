@@ -23,6 +23,7 @@ func TestTransition(t *testing.T) {
 	// Starts off with no events fired and a non-leader state.
 	require.Nil(t, event.Get())
 	require.False(t, m.IsLeader())
+	require.True(t, m.IsGroupJoined())
 	require.Equal(t, time.Unix(0, 0), m.Deadline().Last())
 
 	// Transitioning will not change state until the next pulse.

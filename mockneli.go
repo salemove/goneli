@@ -92,6 +92,10 @@ func (m *mockNeli) IsLeader() bool {
 	return m.getCurrentStatus() == mockLeaderStatusAcquired
 }
 
+func (m *mockNeli) IsGroupJoined() bool {
+	return true
+}
+
 // Pulse the MockNeli instance.
 func (m *mockNeli) Pulse(timeout time.Duration) (bool, error) {
 	ctx, cancel := concurrent.Timeout(context.Background(), timeout)
